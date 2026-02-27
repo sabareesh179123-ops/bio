@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio Seminar: Primal Adaptations</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&family=Syncopate:wght@700&display=swap');
+
+        :root {
+            --bg-dark: #020617;
+            --accent-primary: #38bdf8;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: white;
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Dynamic Mesh Background */
+        .mesh-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: radial-gradient(at 0% 0%, #0c4a6e 0px, transparent 50%),
+                        radial-gradient(at 100% 0%, #1e1b4b 0px, transparent 50%),
+                        radial-gradient(at 100% 100%, #020617 0px, transparent 50%),
+                        radial-gradient(at 0% 100%, #082f49 0px, transparent 50%);
+        }
+
+        .slide {
+            display: none; height: 100vh; width: 100vw;
+            padding: 2rem; position: absolute;
+            flex-direction: column; justify-content: center; align-items: center;
+            z-index: 10;
+        }
+
+        .slide.active {
+            display: flex;
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.95); filter: blur(10px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 48px;
+            padding: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 1000px; width: 90%;
+            position: relative; overflow: hidden;
+        }
+
+        .slide-title {
+            font-family: 'Syncopate', sans-serif;
+            text-transform: uppercase; letter-spacing: 0.2em; line-height: 1.1;
+        }
+
+        .gradient-text {
+            background-clip: text; -webkit-background-clip: text; color: transparent;
+            background-image: linear-gradient(to right, #38bdf8, #818cf8);
+        }
+
+        /* API Settings Modal */
+        #apiModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dot {
+            height: 6px; border-radius: 99px;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.4s ease; width: 12px;
+            cursor: pointer;
+        }
+
+        .dot.active {
+            width: 36px; background: #38bdf8;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+        }
+
+        .ai-orb {
+            width: 120px; height: 120px; border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #38bdf8, #818cf8);
+            box-shadow: 0 0 40px rgba(56, 189, 248, 0.4);
+            position: relative;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+
+        .loading-dots:after {
+            content: '.';
+            animation: dots 1s steps(5, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+
+        .scanner-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(56, 189, 248, 0.5);
+            box-shadow: 0 0 15px #38bdf8;
+            animation: scan 3s linear infinite;
+            z-index: 5;
+        }
+
+        @keyframes scan {
+            0% { top: 0% }
+            100% { top: 100% }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mesh-bg" id="bg"></div>
+
+    <!-- API Key Toggle -->
+    <button onclick="toggleApiModal()" title="API Settings" class="fixed top-8 right-8 z-[210] p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-sky-400 group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+    </button>
+
+    <!-- API Key Modal -->
+    <div id="apiModal">
+        <div class="glass-panel max-w-md text-center">
+            <h3 class="text-2xl font-bold mb-2">api</h3>
+            <input type="password" id="apiKeyInput" placeholder="Paste API Key Here" class="w-full bg-black/40 border border-white/10 p-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-sky-500 mb-6 text-center">
+            <button onclick="toggleApiModal()" class="w-full bg-sky-500 text-black font-bold py-3 rounded-2xl hover:bg-sky-400 transition-colors">SAVE CONFIGURATION</button>
+        </div>
+    </div>
+
+    <!-- 1: Welcome -->
+    <div class="slide active" id="s1" data-bg="radial-gradient(at 0% 0%, #0c4a6e 0px, transparent 50%), radial-gradient(at 100% 100%, #1e1b4b 0px, transparent 50%)">
+        <span class="text-sky-400 font-bold tracking-[0.4em] mb-4 uppercase text-sm">Biological Synthesis</span>
+        <h1 class="text-8xl font-black mb-6 slide-title">BIO<br><span class="gradient-text">SEMINAR</span></h1>
+        <p class="text-slate-400 text-xl tracking-wide">Evolutionary Tactics & Global Adaptations</p>
+    </div>
+
+    <!-- 2: Arctic Alpha -->
+    <div class="slide" id="s2" data-bg="radial-gradient(at 0% 0%, #0f172a 0px, transparent 50%), radial-gradient(at 100% 100%, #0284c7 0px, transparent 50%)">
+        <div class="glass-panel">
+            <h2 class="text-4xl font-black mb-10 slide-title text-sky-300">Arctic: Polar Bear</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="feature-card border-l-4 border-sky-400">
+                    <h3 class="font-bold text-white mb-2 text-xl">Dermal Strategy</h3>
+                    <p class="text-slate-300">Underneath its <span class="text-white font-bold underline">thick white fur</span> lies black skin that absorbs 90% of solar radiation.</p>
+                </div>
+                <div class="feature-card border-l-4 border-white">
+                    <h3 class="font-bold text-white mb-2 text-xl">Hydration</h3>
+                    <p class="text-slate-300">Extracts water through lipid metabolism (burning fat) rather than drinking from frozen sources.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3: Kangaroo Rat -->
+    <div class="slide" id="s3" data-bg="radial-gradient(at 0% 0%, #451a03 0px, transparent 50%), radial-gradient(at 100% 100%, #92400e 0px, transparent 50%)">
+        <div class="glass-panel border-amber-500/30">
+            <div class="scanner-line"></div>
+            <h2 class="text-4xl font-black mb-10 slide-title text-amber-400">Kangaroo Rat</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="feature-card bg-amber-900/10 p-6 rounded-3xl border border-white/5">
+                    <h3 class="text-amber-300 font-bold mb-2">Zero Water Intake</h3>
+                    <p class="text-sm text-slate-300">Never needs to drink liquid water. It produces all necessary moisture internally through the <span class="text-amber-400 font-bold">oxidation of seeds</span>.</p>
+                </div>
+                <div class="feature-card bg-amber-900/10 p-6 rounded-3xl border border-white/5">
+                    <h3 class="text-amber-300 font-bold mb-2">Extreme Concentration</h3>
+                    <p class="text-sm text-slate-300">Renal efficiency is at the theoretical limit; its kidneys produce urine 5x more concentrated than a human's to minimize loss.</p>
+                </div>
+                <div class="md:col-span-2 feature-card bg-white/5 p-6 rounded-3xl border-l-4 border-amber-500">
+                    <h3 class="text-white font-bold mb-1">Temporal Counter-Current</h3>
+                    <p class="text-slate-300 italic">Specialized nasal passages cool exhaled air to condense and re-absorb moisture before it leaves the body.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4: Migration -->
+    <div class="slide" id="s4" data-bg="radial-gradient(at 0% 0%, #1e3a8a 0px, transparent 50%), radial-gradient(at 100% 100%, #312e81 0px, transparent 50%)">
+        <div class="glass-panel border-indigo-500/30">
+            <h2 class="text-4xl font-black mb-10 slide-title text-indigo-300">Global Migration</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="feature-card bg-indigo-900/20 border-t-2 border-indigo-400 p-4 rounded-xl">
+                    <h3 class="text-indigo-300 font-bold mb-2">The Arctic Tern</h3>
+                    <p class="text-sm text-slate-300">Travels 71,000 km annually from the Arctic to the Antarctic. It experiences two summers a year.</p>
+                </div>
+                <div class="feature-card bg-indigo-900/20 border-t-2 border-indigo-400 p-4 rounded-xl">
+                    <h3 class="text-indigo-300 font-bold mb-2">Monarch Navigation</h3>
+                    <p class="text-sm text-slate-300">Uses a "Time-Compensated Sun Compass" and magnetoreception to travel 4,000 km across generations.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5: Desert Humps -->
+    <div class="slide" id="s5" data-bg="radial-gradient(at 0% 0%, #78350f 0px, transparent 50%), radial-gradient(at 100% 100%, #fbbf24 0px, transparent 50%)">
+        <div class="glass-panel">
+            <h2 class="text-4xl font-black mb-10 slide-title text-orange-400">Desert: Camel</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="feature-card border-l-4 border-orange-500">
+                    <h3 class="font-bold text-white mb-2">Fat Storage</h3>
+                    <p class="text-sm text-slate-300">Humps are localized fat deposits, preventing heat trap over the body.</p>
+                </div>
+                <div class="feature-card border-l-4 border-orange-300">
+                    <h3 class="font-bold text-white mb-2">Blood Cells</h3>
+                    <p class="text-sm text-slate-300">Oval-shaped red blood cells flow even during extreme dehydration.</p>
+                </div>
+                <div class="feature-card border-l-4 border-yellow-500">
+                    <h3 class="font-bold text-white mb-2">Nasal Vents</h3>
+                    <p class="text-sm text-slate-300">Sealable nostrils prevent moisture loss and keep sand out.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6: Savannah Infrasonics -->
+    <div class="slide" id="s6" data-bg="radial-gradient(at 0% 0%, #166534 0px, transparent 50%), radial-gradient(at 100% 100%, #ca8a04 0px, transparent 50%)">
+        <div class="glass-panel">
+            <h2 class="text-4xl font-black mb-10 slide-title text-emerald-400">African Elephant</h2>
+            <div class="grid md:grid-cols-2 gap-10">
+                <div class="space-y-4 feature-card bg-emerald-900/10">
+                    <h3 class="text-2xl font-bold">Infrasonic Links</h3>
+                    <p class="text-slate-300">Communication below 20Hz that travels through the ground, detectable via sensitive foot pads.</p>
+                </div>
+                <div class="space-y-4 feature-card bg-yellow-900/10">
+                    <h3 class="text-2xl font-bold">Thermal Radiators</h3>
+                    <p class="text-slate-300">Massive ears pump hot blood through surface vessels to cool the body by up to 10°C.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7: RWS7A CORE (AI) -->
+    <div class="slide" id="s7" data-bg="#000">
+        <div class="glass-panel flex flex-col items-center">
+            <div class="ai-orb mb-10" id="orb"></div>
+            <h2 class="text-3xl font-black slide-title mb-8">RWS7A <span class="text-sky-400">CORE</span></h2>
+            <div class="w-full flex flex-col gap-6">
+                <div class="relative">
+                    <input type="text" id="userInput" placeholder="Ask about an adaptation or migration..." class="w-full bg-white/5 border border-white/10 p-6 rounded-3xl focus:outline-none focus:ring-2 focus:ring-sky-500 text-xl transition-all">
+                    <button onclick="askAI()" class="absolute right-4 top-4 bg-sky-500 hover:bg-sky-400 px-6 py-2 rounded-2xl font-bold text-black transition-colors">QUERY</button>
+                </div>
+                <div id="aiResponse" class="bg-black/40 rounded-[32px] p-8 min-h-[120px] border border-white/5 text-slate-300 text-lg leading-relaxed">
+                    Neural link active. Awaiting query...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8: Thank You -->
+    <div class="slide" id="s8" data-bg="radial-gradient(at 50% 50%, #0c4a6e 0px, #020617 100%)">
+        <div class="text-center">
+            <div class="mb-4 inline-block px-4 py-1 rounded-full border border-sky-500/30 text-sky-400 text-xs tracking-widest uppercase">System Session Terminated</div>
+            <h2 class="text-9xl font-black slide-title mb-6 tracking-tighter">THANK<br><span class="gradient-text">YOU</span></h2>
+            <div class="h-1 w-64 bg-gradient-to-right from-sky-500 to-transparent mx-auto mb-8"></div>
+            <p class="text-xl text-sky-100 opacity-60 font-light italic">Evolution is the only constant. Keep exploring.</p>
+            <div class="mt-12 flex justify-center gap-4">
+                <div class="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></div>
+                <div class="w-2 h-2 rounded-full bg-sky-500 animate-pulse delay-75"></div>
+                <div class="w-2 h-2 rounded-full bg-sky-500 animate-pulse delay-150"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-8">
+        <button onclick="changeSlide(-1)" class="w-12 h-12 rounded-full border border-white/10 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all text-xl">←</button>
+        <div id="dotContainer" class="flex gap-3"></div>
+        <button onclick="changeSlide(1)" class="w-12 h-12 rounded-full border border-white/10 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all text-xl">→</button>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 8;
+
+        function toggleApiModal() {
+            const modal = document.getElementById('apiModal');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function init() {
+            const container = document.getElementById('dotContainer');
+            for(let i=1; i<=totalSlides; i++) {
+                const d = document.createElement('div');
+                d.className = `dot ${i === 1 ? 'active' : ''}`;
+                d.id = `dot-${i}`;
+                d.onclick = () => jumpToSlide(i);
+                container.appendChild(d);
+            }
+            document.getElementById('bg').style.background = document.getElementById('s1').getAttribute('data-bg');
+        }
+
+        function jumpToSlide(num) {
+            if (num === currentSlide) return;
+            document.getElementById(`s${currentSlide}`).classList.remove('active');
+            document.getElementById(`dot-${currentSlide}`).classList.remove('active');
+            currentSlide = num;
+            const nextEl = document.getElementById(`s${currentSlide}`);
+            nextEl.classList.add('active');
+            document.getElementById(`dot-${currentSlide}`).classList.add('active');
+            document.getElementById('bg').style.background = nextEl.getAttribute('data-bg');
+        }
+
+        function changeSlide(dir) {
+            let next = currentSlide + dir;
+            if (next >= 1 && next <= totalSlides) jumpToSlide(next);
+        }
+
+        async function askAI() {
+            const keyInput = document.getElementById('apiKeyInput');
+            const key = keyInput.value.trim();
+            const input = document.getElementById('userInput').value;
+            const output = document.getElementById('aiResponse');
+            const orb = document.getElementById('orb');
+            
+            if (!key) {
+                output.innerHTML = "<span class='text-orange-400'>Error: Linkage required.</span> Click the gear icon to configure your Key.";
+                toggleApiModal();
+                return;
+            }
+            if (!input) return;
+
+            output.innerHTML = '<span class="loading-dots italic">Synthesizing biological data</span>';
+            orb.style.animation = "pulse-ring 1s infinite";
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: input }] }],
+                        systemInstruction: { parts: [{ text: "You are RWS7A, a hyper-intelligent biological analysis system. Explain animal adaptations and migrations concisely and scientifically." }] }
+                    })
+                });
+                
+                if (!response.ok) throw new Error();
+                
+                const data = await response.json();
+                const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                output.innerText = resultText || "No data received.";
+            } catch (error) {
+                output.innerHTML = "<span class='text-red-400'>Uplink severed.</span> Check API key or connection.";
+            } finally {
+                orb.style.animation = "";
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') changeSlide(1);
+            if (e.key === 'ArrowLeft') changeSlide(-1);
+        });
+
+        init();
+    </script>
+</body>
+</html>
